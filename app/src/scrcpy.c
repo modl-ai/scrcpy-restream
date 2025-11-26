@@ -25,6 +25,7 @@
 #include "mouse_sdk.h"
 #include "recorder.h"
 #include "screen.h"
+#include "tcp_sink.h"
 #include "server.h"
 #include "uhid/gamepad_uhid.h"
 #include "uhid/keyboard_uhid.h"
@@ -54,6 +55,7 @@ struct scrcpy {
     struct sc_decoder video_decoder;
     struct sc_decoder audio_decoder;
     struct sc_recorder recorder;
+    struct sc_tcp_sink tcp_sink;
     struct sc_delay_buffer video_buffer;
 #ifdef HAVE_V4L2
     struct sc_v4l2_sink v4l2_sink;
@@ -400,6 +402,8 @@ scrcpy(struct scrcpy_options *options) {
     bool file_pusher_initialized = false;
     bool recorder_initialized = false;
     bool recorder_started = false;
+    bool tcp_sink_initialized = false;
+    bool tcp_sink_started = false;
 #ifdef HAVE_V4L2
     bool v4l2_sink_initialized = false;
 #endif
@@ -630,6 +634,25 @@ scrcpy(struct scrcpy_options *options) {
             sc_packet_source_add_sink(&s->audio_demuxer.packet_source,
                                       &s->recorder.audio_packet_sink);
         }
+    }
+
+    if (options->tcp_restream_port) {
+        if (!sc_tcp_sink_init(&s->tcp_sink, options->tcp_restream_port)) {
+            goto end;
+        }
+        tcp_sink_initialized = true;
+
+        if (!sc_tcp_sink_start(&s->tcp_sink)) {
+            goto end;
+        }
+        tcp_sink_started = true;
+
+        if (options->video) {
+            sc_packet_source_add_sink(&s->video_demuxer.packet_source,
+                                      &s->tcp_sink.packet_sink);
+        }
+
+        LOGI("TCP restream enabled on port %u", options->tcp_restream_port);
     }
 
     struct sc_controller *controller = NULL;
@@ -989,6 +1012,9 @@ end:
     if (recorder_initialized) {
         sc_recorder_stop(&s->recorder);
     }
+    if (tcp_sink_started) {
+        sc_tcp_sink_stop(&s->tcp_sink);
+    }
     if (screen_initialized) {
         sc_screen_interrupt(&s->screen);
     }
@@ -1051,6 +1077,13 @@ end:
     }
     if (recorder_initialized) {
         sc_recorder_destroy(&s->recorder);
+    }
+
+    if (tcp_sink_started) {
+        sc_tcp_sink_join(&s->tcp_sink);
+    }
+    if (tcp_sink_initialized) {
+        sc_tcp_sink_destroy(&s->tcp_sink);
     }
 
     if (file_pusher_initialized) {

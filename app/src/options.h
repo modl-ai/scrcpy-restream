@@ -327,6 +327,7 @@ struct scrcpy_options {
     const char *start_app;
     bool vd_destroy_content;
     bool vd_system_decorations;
+    uint16_t tcp_restream_port; // 0 = disabled
 };
 
 extern const struct scrcpy_options scrcpy_options_default;
