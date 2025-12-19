@@ -114,6 +114,7 @@ const struct scrcpy_options scrcpy_options_default = {
     .vd_destroy_content = true,
     .vd_system_decorations = true,
     .tcp_restream_port = 0,
+    .tcp_control_forwarding_port = 0,
 };
 
 enum sc_orientation

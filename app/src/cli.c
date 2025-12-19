@@ -115,6 +115,7 @@ enum {
     OPT_NO_VD_DESTROY_CONTENT,
     OPT_DISPLAY_IME_POLICY,
     OPT_TCP_RESTREAM,
+    OPT_TCP_CONTROL_FORWARDING,
 };
 
 struct sc_option {
@@ -924,6 +925,14 @@ static const struct sc_option options[] = {
                 "Clients can connect to receive raw H.264/H.265 packets for "
                 "decoding (e.g., with PyAV in Python).\n"
                 "Implicitly disables video and audio playback.",
+    },
+    {
+        .longopt_id = OPT_TCP_CONTROL_FORWARDING,
+        .longopt = "tcp-control-forwarding",
+        .argdesc = "port",
+        .text = "Forward control input (touch, keyboard) via TCP on the "
+                "specified port.\n"
+                "Clients can connect to send control messages directly.",
     },
     {
         .longopt_id = OPT_TIME_LIMIT,
@@ -2838,6 +2847,11 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 // Implicitly disable video and audio playback
                 opts->video_playback = false;
                 opts->audio_playback = false;
+                break;
+            case OPT_TCP_CONTROL_FORWARDING:
+                if (!parse_port(optarg, &opts->tcp_control_forwarding_port)) {
+                    return false;
+                }
                 break;
             default:
                 // getopt prints the error message on stderr
